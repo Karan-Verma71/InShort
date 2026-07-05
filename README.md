@@ -11,11 +11,11 @@
 
 ## Workflow
 
-![screenshots](workflow-instance.png)
+![Screenshots](screenshots/workflow-instance.png)
 
 ## Architecture
 
-![architecture](architecture.png)
+![Architecture](architecture/architecture.png)
 
 ## Requirements
 
