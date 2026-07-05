@@ -1,0 +1,667 @@
+{
+  "name": "Youtube Explainer and Doc generator",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Search Form",
+        "formDescription": "You will get the Info of the Youtube URL you are entering ",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Youtube URL",
+              "defaultValue": "https://youtu.be/oDqjPvD54Ss?si=JT4YYAoTvDJ6qtW9",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -576,
+        -16
+      ],
+      "id": "1503dd78-da53-40a0-bb95-7b1c54d8df53",
+      "name": "On form submission",
+      "webhookId": "94d85696-0a99-4c52-b932-78a728203e6b"
+    },
+    {
+      "parameters": {
+        "url": "https://api.supadata.ai/v1/transcript",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $json.video_url }}"
+            },
+            {
+              "name": "text",
+              "value": "=true"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "YOUR_API_KEY"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        304
+      ],
+      "id": "76e13041-0ea0-481d-9402-61b055a5490d",
+      "name": "HTTP Transcript getter"
+    },
+    {
+      "parameters": {
+        "url": "https://www.youtube.com/oembed",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $json.video_url }}"
+            },
+            {
+              "name": "format",
+              "value": "=json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        -368
+      ],
+      "id": "b31cb5dd-b0c4-46d0-9cb6-6a17996172c3",
+      "name": "HTTP Metadata Getter"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        992,
+        -32
+      ],
+      "id": "0f0cd476-e657-4b36-89a7-4f5d4b7a6925",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const url = $input.first().json[\"Youtube URL\"];\n\nconst match = url.match(\n  /(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/)([^&?/]+)/\n);\n\nreturn {\n  video_id: match ? match[1] : null,\n  video_url: url\n};;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        -16
+      ],
+      "id": "67edde8b-eb73-4855-9bfd-0f219cd96145",
+      "name": "Code in JS"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "YOUR_API_KEY"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "=json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contents",
+              "value": "={{\n[\n  {\n    parts: [\n      {\n        text: $json.prompt\n      }\n    ]\n  }\n]\n}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1776,
+        256
+      ],
+      "id": "5e837f19-cf65-4f2a-a195-edc46af9afdc",
+      "name": "HTTP Request/ AI Agent + Model Builded"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const responseText = $json.candidates[0].content.parts[0].text;\n\nreturn {\n  json: JSON.parse(responseText)\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        256
+      ],
+      "id": "bfa65da0-28f8-43f5-a3c5-fe4b98d3cefb",
+      "name": "Parser AI Generated Content to JS Object"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2352,
+        0
+      ],
+      "id": "95d40bea-5504-4920-b6be-fcb2df2db6be",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "819df558-880b-4c0f-8375-01ae08f76933",
+              "name": "title",
+              "value": "={{$json.title}}",
+              "type": "string"
+            },
+            {
+              "id": "890d1c28-b15e-450f-a49c-d4eb6836b58a",
+              "name": "thumbnail",
+              "value": "={{$json.thumbnail_url}}",
+              "type": "string"
+            },
+            {
+              "id": "3aef22f7-88bd-4308-ba7a-58cec928f394",
+              "name": "author_name",
+              "value": "={{$json.author_name}}",
+              "type": "string"
+            },
+            {
+              "id": "c50843e5-4c2c-47d3-935a-4cd5d79de54e",
+              "name": "video_url",
+              "value": "={{$json.video_url}}",
+              "type": "string"
+            },
+            {
+              "id": "f5dd8e97-f0ea-4ba6-b37c-2640ac09861f",
+              "name": "summary",
+              "value": "={{$json.summary}}",
+              "type": "string"
+            },
+            {
+              "id": "37c0920b-dcdc-47f9-895b-5e1a151f7889",
+              "name": "explanation",
+              "value": "={{$json.explanation}}",
+              "type": "string"
+            },
+            {
+              "id": "a140a318-54a9-40b9-ad1f-f8ce47aa48a1",
+              "name": "key_learnings",
+              "value": "={{$json.key_learnings}}",
+              "type": "array"
+            },
+            {
+              "id": "c6119e5f-63b4-404e-a541-70606dec1218",
+              "name": "important_concepts",
+              "value": "={{$json.important_concepts}}",
+              "type": "array"
+            },
+            {
+              "id": "a4a70666-026a-4246-b273-a0bc023ba606",
+              "name": "applications",
+              "value": "={{$json.applications}}",
+              "type": "array"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2672,
+        0
+      ],
+      "id": "06c83ff1-0550-4ed9-929a-9b4472a87dff",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const {\n  title,\n  author_name,\n  video_url,\n  summary,\n  explanation,\n  key_learnings,\n  important_concepts,\n  applications\n} = $json;\n\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n<style>\nbody{\n    font-family: Arial, sans-serif;\n    margin:40px;\n    line-height:1.6;\n}\n\nh1{\n    color:#2c3e50;\n    border-bottom:2px solid #2c3e50;\n    padding-bottom:8px;\n}\n\nh2{\n    color:#34495e;\n    margin-top:30px;\n}\n\na{\n    color:#0066cc;\n}\n\nul{\n    margin-left:20px;\n}\n\n.info{\n    background:#f5f5f5;\n    padding:15px;\n    border-radius:8px;\n}\n</style>\n</head>\n\n<body>\n\n<h1>${title}</h1>\n\n<div class=\"info\">\n\n<p><strong>Channel:</strong> ${author_name}</p>\n\n<p><strong>Video:</strong>\n<a href=\"${video_url}\">\n${video_url}\n</a>\n</p>\n\n</div>\n\n<h2>Summary</h2>\n\n<p>${summary}</p>\n\n<h2>Detailed Explanation</h2>\n\n<p>${explanation.replace(/\\n/g,\"<br>\")}</p>\n\n<h2>Key Learnings</h2>\n\n<ul>\n${key_learnings.map(x=>`<li>${x}</li>`).join(\"\")}\n</ul>\n\n<h2>Important Concepts</h2>\n\n<ul>\n${important_concepts.map(x=>`<li>${x}</li>`).join(\"\")}\n</ul>\n\n<h2>Applications</h2>\n\n<ul>\n${applications.map(x=>`<li>${x}</li>`).join(\"\")}\n</ul>\n\n</body>\n</html>\n`;\n\nreturn {\n    json:{\n        html,\n        title\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3168,
+        0
+      ],
+      "id": "9b500fb8-01f9-421f-9820-dcad252ef522",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.pdfshift.io/v3/convert/pdf",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "YOUR_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source",
+              "value": "={{$json.html}}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "file",
+              "outputPropertyName": "=data"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3584,
+        0
+      ],
+      "id": "9331727d-9dcf-4c11-b2f3-942476a95bca",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst prompt = `\nYou are an expert Computer Science professor and technical educator.\n\nAnalyze the following YouTube video.\n\nVideo Title:\n${item.title}\n\nChannel:\n${item.author_name}\n\nVideo URL:\n${item.video_url}\n\nTranscript:\n\n${item.content}\n\nReturn ONLY valid JSON.\n\nThe JSON schema must be:\n\n{\n  \"summary\":\"\",\n  \"explanation\":\"\",\n  \"key_learnings\":[],\n  \"important_concepts\":[],\n  \"applications\":[]\n}\n\nRequirements:\n\n- Summary:\n  - 8-12 concise lines covering the complete video.\n\n- Explanation:\n  - Detailed and beginner-friendly.\n  - Explain every important topic in the same order as the video.\n  - Use simple language as if teaching a student.\n\n- Key Learnings:\n  - Exactly 8 items.\n\n- Important Concepts:\n  - Exactly 6 items.\n  - Each item should be a single string representing an important concept from the video.\n\n- Applications:\n  - Exactly 5 real-world applications.\n\nReturn ONLY the JSON object.\nDo not write markdown.\nDo not use code fences.\n`;\n\nreturn [\n  {\n    json: {\n      prompt\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        256
+      ],
+      "id": "322d6e11-92dc-4e92-a09b-cedbf9dd47ff",
+      "name": "Prompt generator in json"
+    },
+    {
+      "parameters": {
+        "content": "## Trigger\n\nClear the Default link from the form you will get after trigger\n",
+        "height": 368,
+        "color": "#81B1BB"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -640,
+        -224
+      ],
+      "typeVersion": 1,
+      "id": "33f261cd-abd3-4cac-92c5-f1424f6a9bea",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## ID / URL Extractor \n\nThis uses **Regex Expression** to extract the video ID from the URL",
+        "height": 352
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -208,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "76a80784-c7d1-43b2-abba-0c0416101247",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## YT metadata Getter\n\nA Free API from YouTube to get the Metadata of any Youtube video along with Video Thumbnail Data too ,\nexclusive of many data like the Transcript , likes , comments , shares , etc.\n",
+        "height": 432,
+        "width": 256,
+        "color": "#1AA263"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        368,
+        -640
+      ],
+      "typeVersion": 1,
+      "id": "0efaad73-35cb-46d6-a8ea-21a9041cd05a",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "\n\n\n\n\n\n\n\n\n\n## Transcript Getter\n\n**Supadata**  is an official Paid AI  service Provider which you can use for many services like You can get the metadata , Transcript , Scrape , Crawl , Map , etc on you any Videos [Supadata](https://docs.supadata.ai/)",
+        "height": 480,
+        "width": 288,
+        "color": "#2B6E54"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        352,
+        272
+      ],
+      "typeVersion": 1,
+      "id": "3d9008bc-260a-40ca-b091-fea44eca7467",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "\n\n\n\n\n\n\n\n\n\n\n\n## JS Code Node\n\nThis is a common node used in Production to clearly demonstrate your Ideas to any AI agent , so for that we use all the data we get to write a common JS code which will behave as a Prompt for the AI as it will generate an JSON which will be easily understanded by any AI Model",
+        "height": 608,
+        "color": "#66A725"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1408,
+        224
+      ],
+      "typeVersion": 1,
+      "id": "570e7e67-0990-4168-8885-357eeac32267",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "\n\n\n\n\n\n\n\n\n\n\n\n## Alternate AI Agent for Common Coder's \n\nThere is one alternate node in n8n i.e. the AI Agent Node which is having multiple features , why I am using this node is because **To create a Commonly understandable workflow which is having only RESTapis and HTTP requests , so that anyone who is even beginner to workflow Realm and has worked only with the Traditional Frontend and Backend Codes could also be able to understand this and could imitate the same in the code too without using any dependency tool like N8N just use the API**\n\nThis is a paid API and you need to Put your Credentials , [Gemini API](https://ai.google.dev/gemini-api/docs) , You can use any Chat Model you want\n\n",
+        "height": 912,
+        "width": 256,
+        "color": "#5732BD"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1696,
+        224
+      ],
+      "typeVersion": 1,
+      "id": "3671c9aa-41c0-4bb0-9f84-fc158d5304ea",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "\n\n\n\n\n\n\n\n\n\n\n\n## JSON Parser\n\nYou can imitate the same flow in Backend using the Fetch API and then Run a .then and again await for the conversion of json to object , here we are doing the same\n",
+        "height": 512,
+        "width": 256,
+        "color": "#B78B4E"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2000,
+        224
+      ],
+      "typeVersion": 1,
+      "id": "ba927afc-9cc5-4590-8d98-553efb841f95",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "## Filtering the Required Fields only\n\n\nThis is helpful as our Final Goal is to make a File of the Generated Report so for doing that Structurally we need to get a structured data first that's why i filter out the Category of data i had got after the agentic flow and the supadata API i had used , using that I could generate the HTML , XML , JSON or  any Structured structured data to convert that easily into a file without being manually modifying the structue of File\n",
+        "height": 736,
+        "width": 256,
+        "color": "#AE199A"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2592,
+        -544
+      ],
+      "typeVersion": 1,
+      "id": "ab0685b9-6657-443e-a282-2e1f4d63d9b0",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "## HTML Generator\n\nThis is a simple node using string just string concatenation to make a HTML \n",
+        "height": 416,
+        "width": 256,
+        "color": "#266F7E"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3088,
+        -224
+      ],
+      "typeVersion": 1,
+      "id": "e0fb1fd1-252c-42e4-86c5-753e2e462a69",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "content": "## PDFShift\n\n\nA Paid API to convert your data to a File and Make it Downloadable \n\nFill your Credentials , [PDFShift](https://docs.pdfshift.io/)",
+        "height": 576,
+        "width": 256,
+        "color": "#6A22A5"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3488,
+        -320
+      ],
+      "typeVersion": 1,
+      "id": "c2c4504b-1156-45c1-a193-00246640b850",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "content": "## Steps to Proceed\n\n\n1. Fill Your Credentials wherever you needed it's already specified\n2. Clear the Default link given in the form\n3. All API are Secure , No Vulnerability till now",
+        "height": 272,
+        "width": 544,
+        "color": "#812C2C"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1264,
+        -192
+      ],
+      "typeVersion": 1,
+      "id": "0d27f34f-0601-46a8-b768-70df4134ec28",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Code in JS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Transcript getter": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "HTTP Metadata Getter": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JS": {
+      "main": [
+        [
+          {
+            "node": "HTTP Transcript getter",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Metadata Getter",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prompt generator in json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request/ AI Agent + Model Builded": {
+      "main": [
+        [
+          {
+            "node": "Parser AI Generated Content to JS Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser AI Generated Content to JS Object": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt generator in json": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request/ AI Agent + Model Builded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "50319479-4321-4dc0-80d6-11adae5a3dac",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8a1ac7156e0cb81cc199719c6f713e7c0b0a108bb35edb5a86f866c97b0d9ed2"
+  },
+  "nodeGroups": [],
+  "id": "v6xYEDKroEFwNOlt",
+  "tags": []
+}
